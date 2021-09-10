@@ -171,7 +171,7 @@ def worker(rank, world_size):
       print("batch time = ", t2 - t1)
 
   elif rank == 1:
-    # rank 0 is the feature extractor, gpu = 0
+    # rank 1 is the feature extractor, gpu = 0
     rpc.init_rpc("feature_extractor", rank=1, world_size=world_size)
     # feature extractor passively waiting for instructions from agents
   elif rank == 2:
