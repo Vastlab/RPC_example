@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 import os
 import torch
@@ -8,20 +7,15 @@ from torch.distributed.rpc import RRef, rpc_sync, rpc_async, remote
 
 import time
 
-
 torch.manual_seed(2)
-
-
 
 def _call_method(method, rref, *args, **kwargs):
     return method(rref.local_value(), *args, **kwargs)
-
 
 def _remote_method(method, rref, *args, **kwargs):
     args = [method, rref] + list(args)
     return rpc_sync(rref.owner(), _call_method, args=args, kwargs=kwargs)
 
-  
   
 class net_class(torch.nn.Module):
   def __init__(self):
@@ -35,7 +29,6 @@ class net_class(torch.nn.Module):
     Logit = self.affine2(x)
     predicted_class = torch.nn.functional.softmax(Logit, dim=1)
     return feature, Logit, predicted_class
-
 
 
 class Feature_Extractor(object):
@@ -53,12 +46,9 @@ class Feature_Extractor(object):
     x = input_tensor.cuda(self.gpu)
     # extract feature from images
     feature, Logit, predicted_class = self.net(x)
-    
     feature = feature.cpu()
     Logit = Logit.cpu()
     predicted_class = predicted_class.cpu()
-    
-
     # report the feature to the agent
     _remote_method(Agent.report_feature, agent_rref, self.id, feature, Logit, predicted_class)
 
@@ -75,20 +65,15 @@ class EVM_RPC(object):
     # to be change with real EVM
     return torch.tanh(FV**2)
 
-
   def run(self, agent_rref, feature_tensor):
     """
     Arguments:
       agent_rref (RRef): an RRef referencing the agent object.
     """
-    
     x = feature_tensor.cuda(self.gpu)
-
     # predict the parbability of novety
     probability = self.predict(x)
-    
     probability = probability.cpu()
-
     # report the probability to the agent
     _remote_method(Agent.report_probability, agent_rref, self.id, probability)
 
@@ -103,7 +88,6 @@ class Agent(object):
     self.evm_rref = remote(evm_info, EVM_RPC)
     self.agent_rref = RRef(self)
 
-
   def report_feature(self, fe_id, feature, Logit, predicted_class):
     """
     feature extractor call this function to report feature tensor.
@@ -112,17 +96,15 @@ class Agent(object):
     self.Logit = Logit
     self.predicted_class = predicted_class
 
-
   def report_probability(self, evm_id, probability):
     """
     EVM call this function to report probability.
     """
     self.prediction = probability
 
-
   def run_feature_extractor(self, input_tensor):
     """
-    The agent will tell feature extractr run.
+    The agent will tell feature extractor run.
     """
     # make async RPC to kick off an episode on all observers
     fut = rpc_async( self.fe_rref.owner(),  _call_method,
@@ -156,7 +138,6 @@ def worker(rank, world_size):
   if rank == 0:
     # rank 0 is the agent, no gpu
     rpc.init_rpc("agent", rank=0, world_size=world_size)
-
     agent = Agent()
     
     # TBD: change the for loop from range(5) to data loader
@@ -187,4 +168,5 @@ def worker(rank, world_size):
 if __name__ == '__main__':
   number_of_gpu = 2
   world_size = 1 + number_of_gpu
-  mp.spawn( worker, args=(world_size, ), nprocs=world_size, join=True  )
+  mp.spawn( worker, args=(world_size, ), nprocs=world_size, join=True )
+
